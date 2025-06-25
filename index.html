@@ -11,7 +11,8 @@
     <script src="parsing/LogicParser.js"></script>
     <script src="parsing/LogicListener.js"></script>
     <script src="parsing/parser.js"></script> -->
-    <script src="checker.js"></script>
+    <script src="js/checker.js"></script>
+    <script src="js/table.js"></script>
 
     <link rel="stylesheet" href="styles.css" />
     
@@ -22,285 +23,54 @@
     </style>
 </head>
 <body>
+
     <h1>Logic Proof Checker with ANTLR</h1>
-
-    <div id="proofContainer"></div>
-
-    <button onclick="addPremise()">Add Premise</button>
-    <button onclick="addConclusion()">Add Conclusion</button>
-    
-    <div style="display: flex; gap: 1rem;">
-        <button onclick="enterAssumption()">Enter Assumption</button>
-        <button onclick="exitAssumption()">Exit Assumption</button>
+    <div id="mainFlexLayout">
+    <div id="proofContainer">
+        <div id="premiseContainer">
+            <h3>Premises</h3>
+        </div>
+        <div id="lineContainer">
+            __________________________
+        </div>
+        <div id="conclusionContainer">
+            <h3>Conclusion</h3>
+        </div>
     </div>
 
-    <button onclick="removeLine()">Remove Last Line</button>
-    <button onclick="submitProof()">Submit Proof</button>
-
-    <button onclick="testExpr()">Test Expr</button>
-
-    <div id="symbolTable">
-        <h3>Symbol Table</h3>
-        <div id="symbolTableContent"></div>
-        <onload="buildSymbolTable()"></onload>
-        
-
-    </div>
-
-    <h3>Parsed Expression (Prolog syntax):</h3>
-    <pre id="parsedOutput"></pre>
-
-    <h3>Prolog Output:</h3>
+    <h3></h3>
     <pre id="prologOutput"></pre>
 
-    <script>
-        let assumption_stack = [[]];
-        let stackCount = 0;
-        let conclusion = false;
-    
-        // NEW: Data structures for proof tracking
-        let lineNumber = 1;
-        let lineMap = {};          // Flat: { lineNumber: {type, text, ...} }
-        let nestedProof = [];      // Nested structure
-        let currentContext = nestedProof;
-        let contextStack = [];     // Tracks nested assumptions
-    
-        function recordLine(entry) {
-            lineMap[lineNumber] = entry;
-            assumption_stack[assumption_stack.length - 1].push(entry);
-            lineNumber++;
-            // console.log("Line recorded:", entry);
-            // console.log("Current line map:", lineMap);
-            // console.log("Current assumption stack:", assumption_stack);
-        }
-        function insertSymbolAtCursor(symbol) {
-            console.log("Inserting symbol:", symbol);
-            const input = document.activeElement;
-            if (input && (input.tagName === "INPUT" || input.tagName === "TEXTAREA")) {
-                const start = input.selectionStart;
-                const end = input.selectionEnd;
-                const value = input.value;
-                input.value = value.slice(0, start) + symbol + value.slice(end);
-                // Move cursor after inserted symbol
-                input.selectionStart = input.selectionEnd = start + symbol.length;
-                input.focus();
-            }
-        }
+    <div id = "proofBuilder">
 
-        function buildSymbolTable() {
-            const OP_MAP = {
-                "¬": "negation",
-                "∧": "conjunction",
-                "∨": "disjunction",
-                "→": "implication",
-                "↔": "equivalence"
-            };
+        <button onclick="addPremise()">Add Premise</button>
+        <button onclick="addConclusion()">Add Conclusion</button>
+        
+        <div style="display: flex; gap: 1rem;">
+            <button onclick="enterAssumption()">Enter Assumption</button>
+            <button onclick="exitAssumption()">Exit Assumption</button>
+        </div>
 
-            const symbolTableContent = document.getElementById('symbolTableContent');
-            symbolTableContent.innerHTML = ""; 
+        <button onclick="removeLine()">Remove Last Line</button>
+        <button onclick="submitProof()">Submit Proof</button>
 
-            for (const [symbol, op] of Object.entries(OP_MAP)) {
-                const symbolDiv = document.createElement('div');
-                symbolDiv.style.display = 'flex';
-                symbolDiv.style.flexDirection = 'column';
-                symbolDiv.style.alignItems = 'center';
+        <button onclick="testExpr()">Test Expr</button>
 
-                const symbolBtn = document.createElement('button');
-                symbolBtn.onmousedown = (e) => {
-                    e.preventDefault();
-                    insertSymbolAtCursor(symbol);
-                };
-                symbolBtn.className = 'symbolRow';
-                symbolBtn.textContent = symbol; 
-                symbolBtn.title = op;
-                // Remove duplicate event: only use onmousedown for instant insert
-                symbolDiv.appendChild(symbolBtn);
+        <div id = "tableContainer">
+            <div id="ruleTable">
+                <h3>Rule Table</h3>
+                <div id="ruleTableContent"></div>
+                <onload="buildRuleTable()"></onload>
+            </div>
 
-                const opText = document.createElement('span');
-                opText.textContent = op.charAt(0).toUpperCase() + op.slice(1);
-                opText.style.fontSize = '0.55rem';
-                opText.style.color = '#666';
-                symbolDiv.appendChild(opText);
+            <div id="symbolTable">
+                <h3>Symbol Table</h3>
+                <div id="symbolTableContent"></div>
+                <onload="buildSymbolTable()"></onload>
+            </div>
+        </div>
+    </div>
+    </div>
 
-                symbolTableContent.appendChild(symbolDiv);
-            }
-        }
-
-    
-        function addPremise(assumption = false) {
-                if (!assumption && conclusion) {
-                    return alert("Cannot add premise after conclusion");
-                }
-
-                const proofContainer = document.getElementById('proofContainer');
-
-                const row = document.createElement('div');
-                row.className = 'proofRow';
-
-                const lineCol = document.createElement('div');
-                lineCol.className = 'lineNumberCol';
-                lineCol.textContent = `${lineNumber}.`;
-
-                const inputCol = document.createElement('div');
-                inputCol.className = 'proofLineCol indent';
-                inputCol.style.setProperty('--depth', assumption_stack.length);
-
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'premise';
-                input.placeholder = 'Enter another premise';
-                input.onchange = () => {
-                    lineMap[lineNumber - 1].text = input.value;
-                };
-
-                inputCol.appendChild(input);
-                row.appendChild(lineCol);
-                row.appendChild(inputCol);
-                proofContainer.appendChild(row);
-
-                recordLine({ type: "premise", text: input.value });
-
-            }
-
-    
-        function enterAssumption() {
-            const proofContainer = document.getElementById('proofContainer');
-    
-            // const newAssumption = { type: "assumption", lines: [] };
-            // recordLine(newAssumption);
-    
-            // contextStack.push(currentContext);
-            // currentContext = newAssumption.lines;
-
-            if(!conclusion) conclusion = true; 
-
-            // const solidLineBefore = document.createElement('hr');
-            // solidLineBefore.style.border = '1px solid black';
-            // solidLineBefore.style.marginLeft = `${assumption_stack.length * 50}px`;
-            // solidLineBefore.className = 'assumption-line';
-            // proofContainer.appendChild(solidLineBefore);
-    
-            assumption_stack.push([]);
-            addPremise(true);
-    
-            const solidLineAfter = document.createElement('hr');
-            solidLineAfter.style.border = '1px solid black';
-            solidLineAfter.style.marginLeft = `${assumption_stack.length * 50}px`;
-            solidLineAfter.className = 'assumption-line';
-            proofContainer.appendChild(solidLineAfter);
-    
-            addConclusion();
-        }
-    
-        function exitAssumption() {
-            if (assumption_stack.length > 1) {
-                assumption_stack.pop();
-                addConclusion();
-            } else {
-                alert("No assumptions to exit.");
-            }
-        }
-    
-        function addConclusion() {
-    if (!conclusion) {
-        conclusion = true;
-        const solidLine = document.createElement('hr');
-        solidLine.className = 'conclusion-line';
-        document.getElementById('proofContainer').appendChild(solidLine);
-    }
-
-    const proofContainer = document.getElementById('proofContainer');
-
-    const row = document.createElement('div');
-    row.className = 'proofRow';
-
-    const lineCol = document.createElement('div');
-    lineCol.className = 'lineNumberCol';
-    lineCol.textContent = `${lineNumber}.`;
-
-    const inputCol = document.createElement('div');
-    inputCol.className = 'proofLineCol indent';
-    inputCol.style.setProperty('--depth', assumption_stack.length);
-
-    const newConclusion = document.createElement('input');
-    newConclusion.type = 'text';
-    newConclusion.className = 'conclusion';
-    newConclusion.placeholder = 'Enter conclusion';
-    newConclusion.style.marginBottom = '0.5rem';
-
-    const newRule = document.createElement('input');
-    newRule.type = 'text';
-    newRule.className = 'rule';
-    newRule.placeholder = 'Enter rule';
-
-    // Update data model on change
-    newConclusion.onchange = () => {
-        lineMap[lineNumber - 1].text = newConclusion.value;
-    };
-    newRule.onchange = () => {
-        lineMap[lineNumber - 1].rule = newRule.value;
-    };
-
-    inputCol.appendChild(newConclusion);
-    inputCol.appendChild(newRule);
-    row.appendChild(lineCol);
-    row.appendChild(inputCol);
-    proofContainer.appendChild(row);
-
-    recordLine({ type: "conclusion", text: newConclusion.value, rule: newRule.value });
-}
-
-    
-        function removeLine() {
-            const proofContainer = document.getElementById('proofContainer');
-            if (proofContainer.lastChild) {
-                const lastElement = proofContainer.lastChild;
-                proofContainer.removeChild(lastElement);
-    
-                const lastElement2 = proofContainer.lastChild;
-                if (lastElement2 && lastElement2.className === 'assumption-line') {
-                    proofContainer.removeChild(lastElement2);
-                    const lastElement3 = proofContainer.lastChild;
-                    proofContainer.removeChild(lastElement3);
-                    lineMap[lineNumber - 1].text = '';
-                    assumption_stack.pop();
-                    contextStack.pop();
-                    currentContext = contextStack[contextStack.length - 1] || nestedProof;
-                }
-                if (lastElement2.className === 'conclusion-line') {
-                    proofContainer.removeChild(lastElement2);
-                    conclusion = false;
-                }
-    
-                // Remove from data structures
-                delete lineMap[--lineNumber];
-            } else {
-                alert("No lines to remove.");
-            }
-        }
-    
-        function submitProof() {
-            // console.log("Flat line map:", lineMap);
-            // console.log("Nested structure:", nestedProof);
-    
-            const premises = Array.from(document.querySelectorAll('.premise')).map(input => input.value.trim()).filter(Boolean);
-            const conclusion = Array.from(document.querySelectorAll('.conclusion')).map(input => input.value.trim()).filter(Boolean);
-    
-                            runLogic(
-                premises, // premises
-                conclusion, // conclusions
-                (results) => {
-                    console.log("Final results:", results);
-                    // results will be an array of booleans indicating which conclusions hold
-                    const prologOutput = document.getElementById('prologOutput');
-                    prologOutput.textContent = results.join('\n');
-                }
-                );
-
-        }
-        window.onload = function() {
-    buildSymbolTable();
-};
-    </script>
 </body>
 </html>
