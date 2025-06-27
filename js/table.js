@@ -174,36 +174,27 @@ function addConclusion() {
     conclusionContainer.appendChild(row);
 }
 function enterAssumption() {
-    const newConclusionContainer = document.createElement('div');
-    newConclusionContainer.className = 'conclusionContainer';
-    conclusionStack.push(newConclusionContainer);   
+    const conclusionContainer = document.getElementById('conclusionContainer');
 
-    const newAssumption = document.createElement('div');
-    newAssumption.style.marginLeft = `${conclusionStack.length * 20}px`;
-    newAssumption.className = 'assumptionRow';
+    const row = document.createElement('div');
+    row.className = 'assumptionRow';
+    row.style.marginLeft = '20px';
+
+    const assumptionPremise = document.createElement('input');
+    assumptionPremise.type = 'text';
+    assumptionPremise.className = 'assumption';
+    assumptionPremise.placeholder = 'Enter assumption';
+    row.appendChild(assumptionPremise);
+
+
     
-    const assumptionPremise = document.createElement('div');
-    assumptionPremise.className = 'assumptionPremise';
-    
-    const assumptionInput = document.createElement('input');
-    assumptionInput.type = 'text';
-    assumptionInput.className = 'assumption';
-    assumptionInput.placeholder = 'Enter assumption';
-    assumptionPremise.appendChild(assumptionInput);
-    
-    const assumptionConclusion = document.createElement('div');
-    assumptionConclusion.className = 'assumptionConclusion';
-    
-    const conclusionInput = document.createElement('input');
-    conclusionInput.type = 'text';
-    conclusionInput.className = 'conclusion';
-    conclusionInput.placeholder = 'Enter conclusion';
-    assumptionConclusion.appendChild(conclusionInput);
-    
-    // Assemble the assumption structure
-    newAssumption.appendChild(assumptionPremise);
-    newAssumption.appendChild(assumptionConclusion);
-    conclusionContainer.appendChild(newAssumption);
+    const assumptionConclusion = document.createElement('input');
+    assumptionConclusion.type = 'text';
+    assumptionConclusion.className = 'conclusion';
+
+
+
+
 }
 
 function exitAssumption() {
@@ -213,10 +204,17 @@ function exitAssumption() {
 function displayResults(ret_array) {
     const prologOutput = document.getElementById('prologOutput');
     prologOutput.innerHTML = "";
+    var truth = true; 
     for(let i = 0; i < ret_array.length; i++) {
         const line = document.createElement('div');
+        truth = truth && ret_array[i];
         line.textContent = ret_array[i];
         prologOutput.appendChild(line);
+    }
+    if (truth) {
+        alert("Proof is valid");
+    } else {
+        alert("Proof is invalid");
     }
 }
 
